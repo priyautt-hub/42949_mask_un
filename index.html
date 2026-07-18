@@ -3,411 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Image Classification Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    
+    <title>Teachable Machine AI Dashboard</title>
+    <!-- นำเข้า Tailwind CSS เพื่อจัดการ UI มินิมอลหรูหรา -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --primary: #3b82f6;
-            --primary-glow: rgba(59, 130, 246, 0.5);
-            --accent: #10b981;
-            --border-color: #334155;
-            --danger: #ef4444;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
         body {
-            font-family: 'Inter', 'Sarabun', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
         }
-
-        .container {
-            width: 100%;
-            max-width: 900px;
-            background: var(--card-bg);
-            border-radius: 20px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-color);
-            overflow: hidden;
-        }
-
-        .header {
-            padding: 25px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.5), var(--card-bg));
-        }
-
-        .header h1 {
-            font-size: 24px;
-            font-weight: 600;
-            background: linear-gradient(45deg, #60a5fa, #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 8px;
-        }
-
-        .header p { color: var(--text-muted); font-size: 14px; }
-
-        .error-box {
-            display: none;
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid var(--danger);
-            color: #fca5a5;
-            padding: 15px 20px;
-            border-radius: 12px;
-            margin: 20px 30px 0 30px;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .workspace {
-            display: flex;
-            flex-wrap: wrap;
-            padding: 30px;
-            gap: 30px;
-        }
-
-        .view-panel, .result-panel {
-            flex: 1;
-            min-width: 280px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .webcam-wrapper {
-            position: relative;
-            width: 280px;
-            height: 280px;
-            border-radius: 16px;
-            overflow: hidden;
-            background-color: #020617;
-            border: 2px solid var(--border-color);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .webcam-wrapper.active {
-            border-color: var(--primary);
-            box-shadow: 0 0 15px 0px var(--primary-glow);
-        }
-
-        /* ปรับปรุงการแสดงผลวิดีโอให้ยืดหยุ่นและเสถียร */
-        #webcam-video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* กลับด้านกระจกเงา */
-            display: none; /* จะแสดงเมื่อกล้องเปิดติด */
-        }
-
-        .placeholder-text {
-            color: var(--text-muted);
-            font-size: 14px;
-            text-align: center;
-            padding: 20px;
-            position: absolute;
-            z-index: 10;
-        }
-
-        .scanner-timeline {
-            width: 280px;
-            height: 6px;
-            background: #0f172a;
-            border-radius: 3px;
-            margin-top: 15px;
-            overflow: hidden;
-            display: block;
-            opacity: 0.3;
-        }
-
-        .scanner-progress {
-            width: 0%;
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-        }
-
-        .btn-start {
-            margin-top: 20px;
-            padding: 14px 40px;
-            font-size: 16px;
-            font-weight: 500;
-            color: #ffffff;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
-            transition: all 0.2s ease;
-        }
-
-        .btn-start:hover {
-            transform: translateY(-2px);
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-        }
-
-        .btn-start:disabled {
-            background: #475569;
-            color: #94a3b8;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .result-panel { justify-content: flex-start; align-items: stretch; }
-        .panel-title {
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-
-        #label-container { display: flex; flex-direction: column; gap: 12px; width: 100%; }
-        
-        .prediction-row {
-            background: #141e30;
-            padding: 14px 18px;
-            border-radius: 12px;
-            border: 1px solid #334155;
-            transition: all 0.3s ease;
-        }
-
-        .prediction-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; }
-        .class-name { font-weight: 500; color: #e2e8f0; }
-        .class-percentage { font-weight: 600; color: var(--primary); }
-        .progress-bar-bg { width: 100%; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; }
-        .progress-bar-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.4s ease; }
-
-        .prediction-row.highest {
-            border-color: rgba(16, 185, 129, 0.5);
-            background: linear-gradient(to right, rgba(16, 185, 129, 0.05), rgba(20, 30, 48, 0.5));
-        }
-        .prediction-row.highest .class-percentage { color: var(--accent); }
-        .prediction-row.highest .progress-bar-fill { background: var(--accent); }
     </style>
 </head>
-<body>
+<body class="min-h-screen flex items-center justify-center p-4 text-slate-100">
 
-    <div class="container">
-        <div class="header">
-            <h1>Teachable Machine Image Analyzer</h1>
-            <p>ระบบแยกแยะวัตถุด้วย AI ประมวลผลอัตโนมัติในทุก ๆ 3 วินาที</p>
-        </div>
-
-        <div class="error-box" id="error-display"></div>
-
-        <div class="workspace">
-            <div class="view-panel">
-                <div class="panel-title">Live Video Input</div>
-                <div class="webcam-wrapper" id="webcam-box">
-                    <div class="placeholder-text" id="placeholder">คลิกปุ่มด้านล่างเพื่อเริ่มเปิดระบบสแกนภาพ</div>
-                    <!-- เปลี่ยนมาใช้แท็ก HTML Video มาตรฐานแทน Canvas เปล่าเพื่อความเสถียรสูงสุด -->
-                    <video id="webcam-video" autoplay playsinline muted></video>
+    <div class="max-w-4xl w-full bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col md:flex-row gap-8">
+        
+        <!-- ฝั่งซ้าย: หน้าจอวิดีโอ (Webcam Live) -->
+        <div class="flex-1 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-800 pb-6 md:pb-0 md:pr-8">
+            <h1 class="text-2xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2">
+                Teachable Machine
+            </h1>
+            <p class="text-sm text-slate-400 text-center mb-6">ระบบวิเคราะห์ภาพด้วย AI ทำงานอัตโนมัติทุกๆ 3 วินาที</p>
+            
+            <div class="relative w-64 h-64 rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-700 shadow-inner flex items-center justify-center mb-6">
+                <!-- ขอบไฟแสดงสถานะการแสกน -->
+                <div id="status-ring" class="absolute inset-0 border-4 border-transparent rounded-2xl transition-all duration-300 pointer-events-none z-10"></div>
+                
+                <!-- ข้อความ Standby ก่อนเปิดกล้อง -->
+                <div id="webcam-placeholder" class="text-slate-500 flex flex-col items-center gap-2 p-4 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span class="text-xs">กรุณากดเปิดสิทธิ์และเปิดกล้อง</span>
                 </div>
-                <div class="scanner-timeline" id="timeline-box">
-                    <div class="scanner-progress" id="scanner-bar"></div>
-                </div>
-                <button class="btn-start" type="button" id="btn-init" onclick="init()">
-                    Start System
-                </button>
+
+                <!-- ใช้ HTML5 Video แท้ๆ เพื่อความชัวร์ในการดึงสตรีมกล้องมาแสดง -->
+                <video id="webcam-video" autoplay playsinline muted class="hidden w-full h-full object-cover transform scale-x-[-1]"></video>
             </div>
 
-            <div class="result-panel">
-                <div class="panel-title">AI Predictions (Every 3s)</div>
-                <div id="label-container">
-                    <div class="prediction-row">
-                        <div class="prediction-info"><span class="class-name">สวมหน้ากากอนามัย (Mask)</span><span class="class-pct" style="color:var(--text-muted)">รอเปิดระบบ..</span></div>
-                        <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
-                    </div>
-                    <div class="prediction-row">
-                        <div class="prediction-info"><span class="class-name">ไม่สวมหน้ากากอนามัย (No Mask)</span><span class="class-pct" style="color:var(--text-muted)">รอเปิดระบบ..</span></div>
-                        <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+            <button type="button" onclick="init()" id="btn-start" class="w-full max-w-xs bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-blue-500/20 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2">
+                เริ่มเปิดกล้องวิเคราะห์ภาพ
+            </button>
+        </div>
+
+        <!-- ฝั่งขวา: ผลลัพธ์โมเดลและแถบเวลาถอยหลัง -->
+        <div class="flex-1 flex flex-col justify-between py-2">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-slate-300 flex items-center gap-2">
+                        <span class="flex h-2 w-2 relative">
+                            <span id="pulse-dot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-500 opacity-75"></span>
+                            <span id="status-dot" class="relative inline-flex rounded-full h-2 w-2 bg-slate-500"></span>
+                        </span>
+                        ผลการวิเคราะห์ภาพ (AI Result)
+                    </h2>
+                    <span id="countdown-text" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-700/50">
+                        Status: Standby
+                    </span>
+                </div>
+
+                <!-- แถบวิ่งนับถอยหลัง 3 วินาที -->
+                <div class="w-full bg-slate-950 h-1.5 rounded-full mb-6 overflow-hidden border border-slate-800">
+                    <div id="progress-bar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-0 transition-all duration-100 ease-linear"></div>
+                </div>
+
+                <!-- กล่องแสดงผลของชุดจำแนกวัตถุ -->
+                <div id="label-container" class="space-y-3">
+                    <div class="text-center text-slate-500 py-8 text-sm border border-dashed border-slate-800 rounded-xl">
+                        ยังไม่มีข้อมูลการวิเคราะห์ กรุณากดปุ่มเปิดกล้องด้านซ้าย
                     </div>
                 </div>
             </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center">
+                <span>Model ID: gL9AkhX8ul</span>
+                <span>Interval: 3.0s</span>
+            </div>
         </div>
+
     </div>
 
+    <!-- ส่วนโหลด AI Engine -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     
     <script type="text/javascript">
-        const URL = "https://teachablemachine.withgoogle.com/models/hzU8HLZuK/";[cite: 2]
+        const URL = "https://teachablemachine.withgoogle.com/models/gL9AkhX8ul/";
 
-        let model, videoElement;
-        let maxPredictions = 2;
-        let lastPredictTime = 0;
-        const PREDICT_INTERVAL = 3000; 
-        let isSystemReady = false;
-        let useDemoMode = false;
-
-        function showUIError(msg) {
-            const errBox = document.getElementById("error-display");
-            errBox.style.display = "block";
-            errBox.innerHTML = `<strong>💡 คำแนะนำสิทธิ์เข้าถึงกล้อง:</strong><br>${msg}`;
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            videoElement = document.getElementById("webcam-video");
-            renderLabels(["สวมหน้ากากอนามัย (Mask)", "ไม่สวมหน้ากากอนามัย (No Mask)"]);
-        });
-
-        function renderLabels(classes) {
-            const labelContainer = document.getElementById("label-container");
-            labelContainer.innerHTML = "";
-            classes.forEach((className, i) => {
-                const row = document.createElement("div");
-                row.className = "prediction-row";
-                row.id = `pred-row-${i}`;
-                row.innerHTML = `
-                    <div class="prediction-info">
-                        <span class="class-name" id="class-name-${i}">${className}</span>
-                        <span class="class-percentage" id="class-pct-${i}">0%</span>
-                    </div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" id="class-bar-${i}"></div>
-                    </div>
-                `;
-                labelContainer.appendChild(row);
-            });
-        }
+        let model, maxPredictions, labelContainer;
+        let videoElement, countdownTimer;
 
         async function init() {
-            const btn = document.getElementById("btn-init");
-            btn.disabled = true;
-            btn.innerText = "กำลังเชื่อมต่อโมเดล AI...";
-            
-            document.getElementById("error-display").style.display = "none";
-            document.getElementById("timeline-box").style.opacity = "1";
+            const btnStart = document.getElementById("btn-start");
+            btnStart.disabled = true;
+            btnStart.innerHTML = `กำลังเชื่อมต่อระบบกล้อง...`;
+
+            videoElement = document.getElementById("webcam-video");
 
             try {
-                // 1. โหลดโมเดลจากลิงก์[cite: 2]
-                model = await tmImage.load(URL + "model.json", URL + "metadata.json").catch(e => {
-                    throw new Error("เบราว์เซอร์บล็อกการโหลดโมเดล (CORS หรือ Network Error) กรุณาตรวจสอบอินเทอร์เน็ต");
+                // 1. เรียกเปิดกล้องผ่านระบบ Native Web API (ได้มาตรฐานความปลอดภัยเบราว์เซอร์สูงสุด)
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 300, height: 300, facingMode: "user" }, 
+                    audio: false 
                 });
                 
-                maxPredictions = model.getTotalClasses();
-                renderLabels(model.getClassLabels());
+                videoElement.srcObject = stream;
+                videoElement.classList.remove("hidden");
+                document.getElementById("webcam-placeholder").style.display = 'none';
 
-                // 2. เปิดกล้องด้วยคำสั่ง Web API มาตรฐานของเบราว์เซอร์ (เสถียรกว่าเยอะมาก)
-                try {
-                    const constraints = {
-                        video: { width: 280, height: 280, facingMode: "user" },
-                        audio: false
-                    };
-                    
-                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    videoElement.srcObject = stream;
-                    videoElement.style.display = "block"; // แสดงผลวิดีโอ
-                    
-                    document.getElementById("placeholder").style.display = "none";
-                    document.getElementById("webcam-box").classList.add("active");
-                } catch (camErr) {
-                    console.warn("เปิดกล้องมาตรฐานไม่สำเร็จ สลับเข้าโหมดจำลองอนิเมชันให้ตรวจเช็คหน้าตา:", camErr);
-                    useDemoMode = true;
-                    showUIError("ไม่สามารถเปิดกล้องเว็บแคมได้ <br>👉 <b>วิธีแก้บน Chrome:</b> คลิก <b>'รูปแม่กุญแจ'</b> ที่อยู่มุมซ้ายสุดข้างลิงก์ URL บนเว็บเบราว์เซอร์ของคุณ -> เลือกเปิดสิทธิ์คำว่า <b>'กล้อง (Camera)'</b> ให้เป็น <b>'อนุญาต (Allow)'</b> จากนั้นให้กดรีเฟรชหน้าเว็บอีกรอบครับ");
-                    document.getElementById("placeholder").innerHTML = "📸 [โหมดจำลองกราฟิก]<br>ระบบกล้องถูกปิดกั้นสิทธิ์";
+                // 2. โหลดโครงข่ายโมเดล Teachable Machine
+                const modelURL = URL + "model.json";[cite: 1]
+                const metadataURL = URL + "metadata.json";[cite: 1]
+                model = await tmImage.load(modelURL, metadataURL);[cite: 1]
+                maxPredictions = model.getTotalClasses();[cite: 1]
+
+                // ปรับสถานะจุดสีบน UI เป็นออนไลน์
+                document.getElementById("status-dot").className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+                document.getElementById("pulse-dot").className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+                document.getElementById("status-ring").className = "absolute inset-0 border-4 border-emerald-500/30 rounded-2xl pointer-events-none z-10";
+
+                // จัดเตรียมช่องแสดงคะแนนเปอร์เซ็นต์
+                labelContainer = document.getElementById("label-container");
+                labelContainer.innerHTML = ""; 
+                for (let i = 0; i < maxPredictions; i++) {[cite: 1]
+                    const div = document.createElement("div");
+                    div.className = "bg-slate-950/50 border border-slate-800/80 p-3 rounded-xl flex flex-col gap-1.5";
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center text-sm">
+                            <span id="class-name-${i}" class="font-medium text-slate-300">กำลังประมวลผล...</span>
+                            <span id="class-perc-${i}" class="font-mono text-xs font-semibold text-cyan-400">0.0%</span>
+                        </div>
+                        <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                            <div id="class-bar-${i}" class="bg-gradient-to-r from-blue-600 to-cyan-400 h-full w-0 transition-all duration-500"></div>
+                        </div>
+                    `;
+                    labelContainer.appendChild(div);[cite: 1]
                 }
 
-                isSystemReady = true;
-                btn.style.display = "none"; 
-                lastPredictTime = performance.now();
-                window.requestAnimationFrame(loop);
-                
-                await predict();
+                // ซ่อนปุ่มเริ่ม และเริ่มลูปการตรวจจับทันที
+                btnStart.className = "hidden";
+                predict();
+                startCustomInterval();
 
             } catch (error) {
-                console.error(error);
-                showUIError(error.message + "<br>กรุณาลองกด F5 เพื่อรีเฟรชหน้าเพจใหม่");
-                btn.disabled = false;
-                btn.innerText = "ลองใหม่อีกครั้ง (Retry)";
+                console.error("Camera Access Refused:", error);
+                alert("เกิดข้อผิดพลาดในการเข้าถึงกล้อง!\n\nโปรดตรวจสอบว่า:\n1. ได้เปิดใช้งานเว็บบนลิงก์ HTTPS หรือยัง\n2. คุณได้กดยอมรับการเข้าถึงกล้องบนแท็บเบราว์เซอร์แล้วหรือไม่");
+                btnStart.disabled = false;
+                btnStart.innerHTML = "ลองเปิดกล้องใหม่อีกครั้ง";
             }
         }
 
-        function loop() {
-            if (!isSystemReady) return;
-            
-            const currentTime = performance.now();
-            const elapsedTime = currentTime - lastPredictTime;
-            
-            // อัปเดตแถบเวลาโหลด 3 วินาที
-            const progressPercent = Math.min((elapsedTime / PREDICT_INTERVAL) * 100, 100);
-            document.getElementById("scanner-bar").style.width = `${progressPercent}%`;
+        // ตัวสแกนควบคุมรอบการทำงานทุก 3 วินาที (3000ms)
+        function startCustomInterval() {
+            const intervalTime = 3000; 
+            const updateVisualRate = 100; 
+            let elapsed = 0;
 
-            if (elapsedTime >= PREDICT_INTERVAL) {
-                predict();
-                lastPredictTime = currentTime; 
-            }
+            clearInterval(countdownTimer);
 
-            window.requestAnimationFrame(loop);
-        }
+            countdownTimer = setInterval(() => {
+                elapsed += updateVisualRate;
+                let percentage = (elapsed / intervalTime) * 100;
+                
+                // ขยับบาร์นับถอยหลัง
+                document.getElementById("progress-bar").style.width = `${percentage}%`;
+                
+                let secondsLeft = ((intervalTime - elapsed) / 1000).toFixed(1);
+                document.getElementById("countdown-text").innerText = `Next Scan: ${secondsLeft}s`;
 
-        async function predict() {
-            let resultData = [];
-
-            // ตรวจสอบว่ามีสตรีมวิดีโอจริงและเล่นอยู่หรือไม่
-            if (model && !useDemoMode && videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
-                // ส่งค่าแท็ก <video> เข้าไปคำนวณในโมเดลตรงๆ ได้เลย
-                resultData = await model.predict(videoElement);
-            } 
-            else {
-                // กรณีกล้องเปิดไม่ได้ ให้จำลองตัวเลขเคลื่อนไหวเพื่อไม่ให้หน้าจอนิ่งพัง
-                let randomVal = Math.random();
-                let labels = model ? model.getClassLabels() : ["Mask", "No Mask"];
-                resultData = [
-                    { className: labels[0], probability: randomVal },
-                    { className: labels[1], probability: 1 - randomVal }
-                ];
-            }
-            
-            let highestIndex = 0;
-            let highestVal = 0;
-            for(let i = 0; i < resultData.length; i++) {
-                if(resultData[i].probability > highestVal) {
-                    highestVal = resultData[i].probability;
-                    highestIndex = i;
-                }
-            }
-
-            for (let i = 0; i < resultData.length; i++) {
-                const className = resultData[i].className;
-                const probability = resultData[i].probability;
-                const percentage = (probability * 100).toFixed(0);
-
-                const nameEl = document.getElementById(`class-name-${i}`);
-                const pctEl = document.getElementById(`class-pct-${i}`);
-                const barEl = document.getElementById(`class-bar-${i}`);
-                const rowEl = document.getElementById(`pred-row-${i}`);
-
-                if (nameEl && pctEl && barEl) {
-                    nameEl.innerText = className;
-                    pctEl.innerText = `${percentage}%`;
-                    barEl.style.width = `${percentage}%`;
-
-                    if (i === highestIndex && probability > 0.05) {
-                        rowEl.classList.add("highest");
-                    } else {
-                        rowEl.classList.remove("highest");
-                    }
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+                if (elapsed >= intervalTime) {
+                    elapsed = 0; 
+                    predict(); // ทำนายผลวัตถุเมื่อครบ 3 วินาที
+                    
+                    // เอฟเฟกต์ไฟวาบที่ขอบแสดงความสำเร็จในการสแกน
+                    const r
