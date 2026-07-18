@@ -61,7 +61,6 @@
 
         .header p { color: var(--text-muted); font-size: 14px; }
 
-        /* แจ้งเตือนข้อผิดพลาดกลางหน้าจอ */
         .error-box {
             display: none;
             background: rgba(239, 68, 68, 0.15);
@@ -108,19 +107,13 @@
             box-shadow: 0 0 15px 0px var(--primary-glow);
         }
 
-        #webcam-container {
+        /* ปรับปรุงการแสดงผลวิดีโอให้ยืดหยุ่นและเสถียร */
+        #webcam-video {
             width: 100%;
             height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #webcam-container canvas {
-            width: 100% !important;
-            height: 100% !important;
             object-fit: cover;
-            transform: scaleX(-1);
+            transform: scaleX(-1); /* กลับด้านกระจกเงา */
+            display: none; /* จะแสดงเมื่อกล้องเปิดติด */
         }
 
         .placeholder-text {
@@ -139,7 +132,7 @@
             border-radius: 3px;
             margin-top: 15px;
             overflow: hidden;
-            display: block; /* เปิดให้เห็นแถบสถานะตั้งแต่แรก */
+            display: block;
             opacity: 0.3;
         }
 
@@ -147,7 +140,6 @@
             width: 0%;
             height: 100%;
             background: linear-gradient(90deg, var(--primary), var(--accent));
-            transition: width 0.1s linear;
         }
 
         .btn-start {
@@ -218,7 +210,6 @@
             <p>ระบบแยกแยะวัตถุด้วย AI ประมวลผลอัตโนมัติในทุก ๆ 3 วินาที</p>
         </div>
 
-        <!-- กล่องพ่นโค้ด Error แนะนำวิธีแก้ให้ผู้ใช้เห็นทันที -->
         <div class="error-box" id="error-display"></div>
 
         <div class="workspace">
@@ -226,7 +217,8 @@
                 <div class="panel-title">Live Video Input</div>
                 <div class="webcam-wrapper" id="webcam-box">
                     <div class="placeholder-text" id="placeholder">คลิกปุ่มด้านล่างเพื่อเริ่มเปิดระบบสแกนภาพ</div>
-                    <div id="webcam-container"></div>
+                    <!-- เปลี่ยนมาใช้แท็ก HTML Video มาตรฐานแทน Canvas เปล่าเพื่อความเสถียรสูงสุด -->
+                    <video id="webcam-video" autoplay playsinline muted></video>
                 </div>
                 <div class="scanner-timeline" id="timeline-box">
                     <div class="scanner-progress" id="scanner-bar"></div>
@@ -239,7 +231,6 @@
             <div class="result-panel">
                 <div class="panel-title">AI Predictions (Every 3s)</div>
                 <div id="label-container">
-                    <!-- แสดงผล UI รอไว้ล่วงหน้าเลยเพื่อไม่ให้หน้าจอโล่งค้าง -->
                     <div class="prediction-row">
                         <div class="prediction-info"><span class="class-name">สวมหน้ากากอนามัย (Mask)</span><span class="class-pct" style="color:var(--text-muted)">รอเปิดระบบ..</span></div>
                         <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
@@ -253,35 +244,32 @@
         </div>
     </div>
 
-    <!-- โหลด TensorFlow + Teachable Machine -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     
     <script type="text/javascript">
-        // ลิงก์โมเดลหน้ากากอนามัยของคุณ[cite: 2]
         const URL = "https://teachablemachine.withgoogle.com/models/hzU8HLZuK/";[cite: 2]
 
-        let model, webcam, labelContainer;
-        let maxPredictions = 2; // ตั้งค่าเริ่มต้นป้องกันสคริปต์หยุดทำงานกลางคัน
+        let model, videoElement;
+        let maxPredictions = 2;
         let lastPredictTime = 0;
         const PREDICT_INTERVAL = 3000; 
         let isSystemReady = false;
         let useDemoMode = false;
 
-        // ฟังก์ชันช่วยพ่นข้อความ Error เตือนผู้ใช้บนหน้าจออย่างสวยงาม
         function showUIError(msg) {
             const errBox = document.getElementById("error-display");
             errBox.style.display = "block";
-            errBox.innerHTML = `<strong>💡 แนะนำการเปิดสิทธิ์เบราว์เซอร์:</strong><br>${msg}`;
+            errBox.innerHTML = `<strong>💡 คำแนะนำสิทธิ์เข้าถึงกล้อง:</strong><br>${msg}`;
         }
 
-        // สร้างโครงสร้างแถบผลลัพธ์ล่วงหน้าทันทีที่เปิดเว็บ
         window.addEventListener('DOMContentLoaded', () => {
+            videoElement = document.getElementById("webcam-video");
             renderLabels(["สวมหน้ากากอนามัย (Mask)", "ไม่สวมหน้ากากอนามัย (No Mask)"]);
         });
 
         function renderLabels(classes) {
-            labelContainer = document.getElementById("label-container");
+            const labelContainer = document.getElementById("label-container");
             labelContainer.innerHTML = "";
             classes.forEach((className, i) => {
                 const row = document.createElement("div");
@@ -309,81 +297,77 @@
             document.getElementById("timeline-box").style.opacity = "1";
 
             try {
-                // 1. โหลดโมเดลจาก Server[cite: 2]
+                // 1. โหลดโมเดลจากลิงก์[cite: 2]
                 model = await tmImage.load(URL + "model.json", URL + "metadata.json").catch(e => {
-                    throw new Error("เบราว์เซอร์บล็อกการเข้าถึงไฟล์โมเดลชั่วคราว หรือเครือข่ายอินเทอร์เน็ตไม่เสถียร");
+                    throw new Error("เบราว์เซอร์บล็อกการโหลดโมเดล (CORS หรือ Network Error) กรุณาตรวจสอบอินเทอร์เน็ต");
                 });
                 
-                maxPredictions = model.getTotalClasses();[cite: 2]
+                maxPredictions = model.getTotalClasses();
                 renderLabels(model.getClassLabels());
 
-                // 2. พยายามเรียกเปิดกล้องเว็บแคม[cite: 2]
+                // 2. เปิดกล้องด้วยคำสั่ง Web API มาตรฐานของเบราว์เซอร์ (เสถียรกว่าเยอะมาก)
                 try {
-                    webcam = new tmImage.Webcam(280, 280, true);[cite: 2]
-                    await webcam.setup();[cite: 2]
-                    await webcam.play();[cite: 2]
+                    const constraints = {
+                        video: { width: 280, height: 280, facingMode: "user" },
+                        audio: false
+                    };
                     
-                    document.getElementById("webcam-container").innerHTML = "";
-                    document.getElementById("webcam-container").appendChild(webcam.canvas);[cite: 2]
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    videoElement.srcObject = stream;
+                    videoElement.style.display = "block"; // แสดงผลวิดีโอ
+                    
                     document.getElementById("placeholder").style.display = "none";
                     document.getElementById("webcam-box").classList.add("active");
                 } catch (camErr) {
-                    console.warn("เปิดกล้องไม่ได้ ระบบเปิดใช้งานโหมดจำลองเพื่อให้เห็นดีไซน์:", camErr);
+                    console.warn("เปิดกล้องมาตรฐานไม่สำเร็จ สลับเข้าโหมดจำลองอนิเมชันให้ตรวจเช็คหน้าตา:", camErr);
                     useDemoMode = true;
-                    showUIError("ไม่สามารถเปิดกล้องเว็บแคมได้ชั่วคราว <br>👉 <b>วิธีแก้ไข:</b> มองหาไอคอนรูป <b>'แม่กุญแจ'</b> หรือปุ่มตัวเลือกหน้าช่องกรอก URL บนเบราว์เซอร์ของคุณ จากนั้นเปลี่ยนสิทธิ์ตรงคำว่า <b>'กล้อง (Camera)'</b> ให้เป็น <b>'อนุญาต (Allow)'</b> แล้วกดรีเฟรชหน้าเว็บอีกครั้งครับ <br>*(ขณะนี้ระบบรันโหมดจำลองอนิเมชันให้ตรวจเช็คดีไซน์ล่วงหน้า)*");
-                    document.getElementById("placeholder").innerHTML = "📸 [โหมดจำลองกราฟิก]<br>เบราว์เซอร์บล็อกการเข้าถึงกล้อง";
+                    showUIError("ไม่สามารถเปิดกล้องเว็บแคมได้ <br>👉 <b>วิธีแก้บน Chrome:</b> คลิก <b>'รูปแม่กุญแจ'</b> ที่อยู่มุมซ้ายสุดข้างลิงก์ URL บนเว็บเบราว์เซอร์ของคุณ -> เลือกเปิดสิทธิ์คำว่า <b>'กล้อง (Camera)'</b> ให้เป็น <b>'อนุญาต (Allow)'</b> จากนั้นให้กดรีเฟรชหน้าเว็บอีกรอบครับ");
+                    document.getElementById("placeholder").innerHTML = "📸 [โหมดจำลองกราฟิก]<br>ระบบกล้องถูกปิดกั้นสิทธิ์";
                 }
 
-                // เปลี่ยนสถานะให้ระบบเริ่มทำลูปจับเวลา
                 isSystemReady = true;
-                btn.style.display = "none"; // ซ่อนปุ่มเมื่อรันผ่านแล้ว
+                btn.style.display = "none"; 
                 lastPredictTime = performance.now();
                 window.requestAnimationFrame(loop);
                 
-                // สั่งประมวลผลรอบแรกทันที
                 await predict();
 
             } catch (error) {
                 console.error(error);
-                showUIError(error.message + "<br>กรุณาลองรีเฟรชหน้าเว็บ (F5) แล้วกดใหม่อีกครั้ง");
+                showUIError(error.message + "<br>กรุณาลองกด F5 เพื่อรีเฟรชหน้าเพจใหม่");
                 btn.disabled = false;
                 btn.innerText = "ลองใหม่อีกครั้ง (Retry)";
             }
         }
 
-        async function loop() {
+        function loop() {
             if (!isSystemReady) return;
-
-            // อัปเดตภาพสตรีมสด (ถ้ามีกล้องจริง)[cite: 2]
-            if (webcam && webcam.canvas && !useDemoMode) {
-                webcam.update();[cite: 2]
-            }
             
             const currentTime = performance.now();
             const elapsedTime = currentTime - lastPredictTime;
             
-            // อัปเดตแถบโหลดนับถอยหลังวิ่งจาก 0% ไป 100% ภายใน 3 วินาที
+            // อัปเดตแถบเวลาโหลด 3 วินาที
             const progressPercent = Math.min((elapsedTime / PREDICT_INTERVAL) * 100, 100);
             document.getElementById("scanner-bar").style.width = `${progressPercent}%`;
 
-            // เมื่อครบทุก ๆ 3 วินาที ให้สั่งทายผล
             if (elapsedTime >= PREDICT_INTERVAL) {
-                await predict();[cite: 2]
-                lastPredictTime = currentTime; // รีเซ็ตลูปเวลาใหม่
+                predict();
+                lastPredictTime = currentTime; 
             }
 
-            window.requestAnimationFrame(loop);[cite: 2]
+            window.requestAnimationFrame(loop);
         }
 
         async function predict() {
             let resultData = [];
 
-            // เคสที่ 1: กล้องและโมเดลพร้อมทำงานจริงร้อยเปอร์เซ็นต์
-            if (model && webcam && webcam.canvas && !useDemoMode) {
-                resultData = await model.predict(webcam.canvas);[cite: 2]
+            // ตรวจสอบว่ามีสตรีมวิดีโอจริงและเล่นอยู่หรือไม่
+            if (model && !useDemoMode && videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+                // ส่งค่าแท็ก <video> เข้าไปคำนวณในโมเดลตรงๆ ได้เลย
+                resultData = await model.predict(videoElement);
             } 
-            // เคสที่ 2: ระบบเปิดกล้องไม่ได้ ให้สร้างข้อมูลสุ่มอนิเมชันขึ้นมาเพื่อให้กราฟิกทำงานสวยงาม
             else {
+                // กรณีกล้องเปิดไม่ได้ ให้จำลองตัวเลขเคลื่อนไหวเพื่อไม่ให้หน้าจอนิ่งพัง
                 let randomVal = Math.random();
                 let labels = model ? model.getClassLabels() : ["Mask", "No Mask"];
                 resultData = [
@@ -392,7 +376,6 @@
                 ];
             }
             
-            // ค้นหาคลาสที่คะแนนสูงสุดในรอบนั้น
             let highestIndex = 0;
             let highestVal = 0;
             for(let i = 0; i < resultData.length; i++) {
@@ -402,7 +385,6 @@
                 }
             }
 
-            // นำตัวเลขไปวาดลงแถบความกว้างเปอร์เซ็นต์บนหน้าจอ UI
             for (let i = 0; i < resultData.length; i++) {
                 const className = resultData[i].className;
                 const probability = resultData[i].probability;
@@ -418,7 +400,6 @@
                     pctEl.innerText = `${percentage}%`;
                     barEl.style.width = `${percentage}%`;
 
-                    // ไฮไลท์คลาสสีเขียวสำหรับคลาสที่มีเปอร์เซ็นต์ชนะสูงสุด
                     if (i === highestIndex && probability > 0.05) {
                         rowEl.classList.add("highest");
                     } else {
